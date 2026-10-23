@@ -29,3 +29,7 @@ GitHub Pages es público: nunca suba participantes, correos, PDFs firmados ni cr
 - Se reportan excepciones sin obligar a seleccionar archivos manualmente.
 - Los otros recursos externos XLSX, JSZip, PDFLib sí siguen dependiendo de Internet.
 - Insertar QR después de la firma puede invalidar la firma digital: conservar originales.
+
+
+## Corrección carga QR (23-10-2026)
+El motor QR ahora está **incluido dentro de extension.js**. No necesita qr-local.js ni una biblioteca QR externa. Subir **index.html y extension.js** juntos (y los demás archivos si faltan). Confirmar que la web usa la versión de GitHub Pages recién publicada. Si persiste el error, abrir Herramientas de desarrollo > Consola para consultar el error real.
