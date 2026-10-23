@@ -19,7 +19,45 @@ function centered(page,line,font,size,y,color){const width=font.widthOfTextAtSiz
 async function buildPdf(p){needLibraries('PDFLib');const {PDFDocument,StandardFonts,rgb}=PDFLib;const pdf=await PDFDocument.load(await loadTemplate());const page=pdf.getPage(0);const bold=await pdf.embedFont(StandardFonts.HelveticaBold);const regular=await pdf.embedFont(StandardFonts.Helvetica);const gray=rgb(.06,.08,.12);let nameSize=29;while(bold.widthOfTextAtSize(p.name,nameSize)>660&&nameSize>12)nameSize-=.5;if(bold.widthOfTextAtSize(p.name,nameSize)>660)throw Error('Nombre demasiado largo: '+p.name);centered(page,p.name,bold,nameSize,540-260,gray);const activity=tidy($('actividad').value);let activitySize=17,lines;while(activitySize>=11){lines=wrappedLines(activity,regular,activitySize,545,4);if(lines)break;activitySize--}if(!lines)throw Error('Descripción de actividad demasiado larga. Acórtala para que no se corte.');const startY=540-305+(lines.length-2)*10;lines.forEach((line,i)=>centered(page,line,regular,activitySize,startY-i*21,gray));const date=tidy($('fecha').value);let fs=16;while(regular.widthOfTextAtSize(date,fs)>250&&fs>=10)fs--;if(regular.widthOfTextAtSize(date,fs)>250)throw Error('Fecha de emisión demasiado larga.');page.drawText(date,{x:697-regular.widthOfTextAtSize(date,fs),y:540-377,size:fs,font:regular,color:gray});return await pdf.save()}
 function filenames(){const used=new Set();return participants.map(p=>{const base=safeFile(p.name);let name=base+'.pdf',n=2;while(used.has(name.toLowerCase()))name=base+'_'+n+++'.pdf';used.add(name.toLowerCase());return name})}
 $('archivo').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const rows=await loadRows(file);participants=rows;refresh();$('fileStatus').textContent=rows.length+' participantes importados. Revisa los datos antes de generar.'}catch(err){alert('Error al leer el archivo: '+err.message)}e.target.value=''});
-$('archivoEnlaces').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const rows=await loadRows(f);let n=0;for(const row of rows){const p=participants.find(p=>normalized(p.name)===normalized(row.name));if(p&&row.link){p.link=row.link;n++}}refresh();if(typeof renderMatches==='function')renderMatches();$('fileStatus').textContent=n+' enlaces asociados de '+rows.length+' filas. Si faltan, comprueba nombres y corrige manualmente los enlaces en la tabla.'}catch(err){alert(err.message)}e.target.value=''});
+// Paso 4: admite A=nombre, B=enlace con o sin encabezados; también hipervínculos de celdas Excel.
+async function readDriveLinks(file){
+ needLibraries('XLSX');
+ const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellHyperlink:true});
+ const sheet=wb.Sheets[wb.SheetNames[0]];
+ const range=XLSX.utils.decode_range(sheet['!ref']||'A1:B1');
+ const records=[];
+ for(let r=range.s.r;r<=range.e.r;r++){
+   const values=[];
+   for(let c=range.s.c;c<=Math.min(range.e.c,range.s.c+12);c++){
+     const cell=sheet[XLSX.utils.encode_cell({r,c})];
+     values.push({text:tidy(cell?.v),url:tidy(cell?.l?.Target||'')});
+   }
+   if(!values.some(x=>x.text||x.url))continue;
+   const name=values[0].text;
+   if(['nombre','nombre completo','nombres','participante','apellidos y nombres'].includes(name.toLowerCase()))continue;
+   const linkCell=values.find((x,i)=>i>0&&(/^https?:\/\//i.test(x.text)||/^https?:\/\//i.test(x.url)));
+   const link=linkCell?(linkCell.url||linkCell.text):'';
+   if(name)records.push({name,link});
+ }
+ return records;
+}
+$('archivoEnlaces').addEventListener('change',async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{
+  const rows=await readDriveLinks(f);
+  let n=0;let invalid=0;let missing=0;
+  for(const row of rows){
+    if(!/^https:\/\//i.test(row.link)){invalid++;continue;}
+    const matches=participants.filter(p=>normalized(p.name)===normalized(row.name));
+    if(matches.length===1){matches[0].link=row.link;n++;}else missing++;
+  }
+  refresh();if(typeof renderMatches==='function')renderMatches();
+  const msg=`Excel leído: ${rows.length} filas. Enlaces vinculados: ${n}. Sin participante coincidente: ${missing}. Sin enlace https válido: ${invalid}.`;
+  $('fileStatus').textContent=msg;
+  const qr=$('qrProgress');if(qr)qr.textContent=msg+(missing?' Revisa los nombres en el paso 2 o pega el enlace manualmente en la tabla.':'');
+ }catch(err){$('qrProgress').textContent='Error al importar enlaces: '+err.message;alert(err.message)}
+ e.target.value='';
+});
 $('agregar').addEventListener('click',()=>{const name=tidy($('nuevoNombre').value),email=tidy($('nuevoCorreo').value);if(name.length<3)return alert('Escribe el nombre completo.');if(email&&!mailOK(email))return alert('El correo electrónico no tiene un formato válido.');participants.push({name,email,link:''});$('nuevoNombre').value='';$('nuevoCorreo').value='';refresh()});
 $('limpiar').addEventListener('click',()=>{if(confirm('¿Eliminar todos los participantes del listado actual?')){participants=[];refresh();status('')}});
 $('ejemplo').addEventListener('click',()=>{try{needLibraries('XLSX');const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([['Nombre completo','Correo','Enlace'],['Acosta Lozano, Ximena Elena','persona@ejemplo.com','']]);ws['!cols']=[{wch:40},{wch:35},{wch:60}];XLSX.utils.book_append_sheet(wb,ws,'Participantes');XLSX.writeFile(wb,'plantilla_participantes_mimp.xlsx')}catch(e){alert(e.message)}});
