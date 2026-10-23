@@ -33,8 +33,8 @@ Public Sub PrepararBorradoresConstancias()
         enlace = Trim(CStr(hoja.Cells(fila, 3).Value))
         pdf = Trim(CStr(hoja.Cells(fila, 4).Value))
         qr = Trim(CStr(hoja.Cells(fila, 5).Value))
-        rutaPDF = carpeta & "\PDF_FIRMADOS\" & pdf
-        rutaQR = carpeta & "\QR_COMPLEMENTARIOS\" & qr
+        rutaPDF = carpeta & "\DIPLOMAS_FINALES_QR\" & pdf
+        rutaQR = carpeta & "\ORIGINALES_FIRMADOS\" & qr
         If Len(nombre) = 0 Or InStr(destinatario, "@") = 0 Or _
            Dir(rutaPDF) = "" Or Dir(rutaQR) = "" Then
             hoja.Cells(fila, 6).Value = "REVISAR: datos o archivos faltantes"
@@ -45,13 +45,12 @@ Public Sub PrepararBorradoresConstancias()
             mail.Subject = "Constancia de participacion - MIMP"
             mail.Body = "Estimado(a) " & nombre & ":" & vbCrLf & vbCrLf & _
                "Por medio del presente, compartimos su constancia de participacion " & _
-               "firmada digitalmente, junto con una hoja complementaria que contiene " & _
-               "el codigo QR de acceso al documento." & vbCrLf & vbCrLf & _
+               "con su codigo QR incorporado para acceder al documento. " & _
+               "" & vbCrLf & vbCrLf & _
                "Enlace: " & enlace & vbCrLf & vbCrLf & _
                "Atentamente," & vbCrLf & _
                "Oficina de Atencion a la Ciudadania y Gestion Documental - MIMP"
             mail.Attachments.Add rutaPDF
-            mail.Attachments.Add rutaQR
             If Len(cuentaDeseada) > 0 Then
                 For Each cuenta In app.Session.Accounts
                     If LCase(Trim(cuenta.SmtpAddress)) = LCase(cuentaDeseada) Then
