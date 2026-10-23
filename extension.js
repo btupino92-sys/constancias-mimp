@@ -1262,7 +1262,7 @@ const Qr=req("index");const EC=req("QRErrorCorrectLevel");global.QRCode={toDataU
  'use strict';
 // Archivos PDF o ZIP; asociación automática mediante nombres normalizados y tokens.
 let signedFiles=[],unmatchedPDFs=[];
-const baseName=s=>String(s||'').replace(/\.pdf$/i,'').replace(/\s*\(\d+\)$/,'').replace(/[_\-.,]+/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const baseName=s=>String(s||'').replace(/\.pdf$/i,'').replace(/(?:\s*[\[(]\s*f\s*[\])]|[\s_-]+f)\s*$/i,'').replace(/\s*\(\d+\)$/,'').replace(/[_\-.,]+/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const keyName=s=>baseName(s).replace(/[^a-z0-9]/g,'');
 const tokenName=s=>baseName(s).split(' ').filter(Boolean).sort().join('|');
 const validLink=s=>{try{const u=new URL(s);return u.protocol==='https:';}catch{return false}};
