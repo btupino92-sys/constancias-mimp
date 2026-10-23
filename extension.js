@@ -1348,6 +1348,16 @@ async function generatePackage(){
  }
  const book=XLSX.utils.book_new(),sheet=XLSX.utils.json_to_sheet(rows);sheet['!cols']=[{wch:42},{wch:38},{wch:64},{wch:50},{wch:50},{wch:18}];XLSX.utils.book_append_sheet(book,sheet,'Envios');
  zip.file('CONTROL_ENVIO_OUTLOOK.xlsx',XLSX.write(book,{bookType:'xlsx',type:'array'}));
+ // Control plano para preparar borradores SIN Excel, desde Outlook clasico Windows.
+ const csvCell=x=>'"'+String(x??'').replaceAll('"','""').replace(/[\r\n]+/g,' ')+'"';
+ const csvContent='\ufeff'+[['Nombre','Correo','PDF','Enlace'],...rows.map(r=>[r['Nombre completo'],r['Correo'],r['PDF final'],r['Enlace Drive']])].map(line=>line.map(csvCell).join(';')).join('\r\n');
+ zip.file('ENVIO_OUTLOOK_LOCAL.csv',csvContent);
+ for (const name of ['INICIAR_BORRADORES.cmd','PrepararBorradoresOutlookClasico.ps1']) {
+   const response=await fetch('outlook/'+name);
+   if(!response.ok)throw Error('No se encontro outlook/'+name+' en GitHub. Sube la carpeta outlook completa.');
+   zip.file(name,await response.text());
+ }
+
  zip.file('LEEME.txt','DIPLOMAS_FINALES_QR: PDFs con QR dentro del diploma.\nORIGINALES_FIRMADOS: copias firmadas sin modificar.\nAVISO: la modificación posterior a la firma puede invalidar la firma digital.\n');
  const macro=await fetch('outlook/PrepararBorradoresConstancias.bas');if(macro.ok)zip.file('outlook/PrepararBorradoresConstancias.bas',await macro.text());
  downloadBlob(await zip.generateAsync({type:'blob',compression:'DEFLATE'}),'MIMP_DIPLOMAS_QR_Y_OUTLOOK.zip');
