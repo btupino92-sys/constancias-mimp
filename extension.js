@@ -1,17 +1,97 @@
  'use strict';
-// Vinculación flexible con intervención manual; los originales no se alteran.
-let signedFiles=[];let overrides={};
-const normName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\.pdf$/i,'').replace(/\s*\(\d+\)\s*$/,'').replace(/[_\-.,]+/g,' ').replace(/\s+/g,' ').trim();
-const identity=s=>normName(s).replace(/[^a-z0-9]/g,'');
+// Archivos PDF o ZIP; asociación automática mediante nombres normalizados y tokens.
+let signedFiles=[],unmatchedPDFs=[];
+const baseName=s=>String(s||'').replace(/\.pdf$/i,'').replace(/\s*\(\d+\)$/,'').replace(/[_\-.,]+/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const keyName=s=>baseName(s).replace(/[^a-z0-9]/g,'');
+const tokenName=s=>baseName(s).split(' ').filter(Boolean).sort().join('|');
 const validLink=s=>{try{const u=new URL(s);return u.protocol==='https:';}catch{return false}};
-function bestFile(p,i){if(overrides[i]!==undefined)return signedFiles[overrides[i]]||null;let key=identity(p.name);return signedFiles.find(f=>identity(f.name)===key)||null;}
-function extensionStatus(s){$('extensionStatus').textContent=s;}
-function renderMatches(){let matched=0,linked=0,ready=0;const wrap=$('matchRows');wrap.replaceChildren();const tbl=document.createElement('table');tbl.innerHTML='<thead><tr><th>Participante</th><th>PDF firmado</th><th>Enlace QR</th></tr></thead>';const body=document.createElement('tbody');participants.forEach((p,i)=>{let f=bestFile(p,i);if(f)matched++;if(validLink(p.link))linked++;if(f&&validLink(p.link))ready++;const tr=document.createElement('tr');const a=document.createElement('td');a.textContent=p.name;const b=document.createElement('td');const sel=document.createElement('select');let blank=document.createElement('option');blank.value='';blank.textContent='— Seleccionar PDF —';sel.append(blank);signedFiles.forEach((file,j)=>{const opt=document.createElement('option');opt.value=j;opt.textContent=file.name;sel.append(opt)});const ix=f?signedFiles.indexOf(f):-1;sel.value=ix>=0?String(ix):'';sel.addEventListener('change',()=>{overrides[i]=sel.value===''?-1:Number(sel.value);renderMatches()});b.append(sel);const c=document.createElement('td');const inp=document.createElement('input');inp.placeholder='https://drive.google.com/...';inp.value=p.link||'';inp.addEventListener('change',()=>{p.link=inp.value.trim();refresh();renderMatches()});c.append(inp);tr.append(a,b,c);body.append(tr)});tbl.append(body);wrap.append(tbl);$('signedCount').textContent=matched+' / '+participants.length+' PDF asociados ('+signedFiles.length+' cargados)';$('linkCount').textContent=linked+' / '+participants.length+' enlaces';$('readyCount').textContent=ready+' participantes con PDF y QR listos';return ready}
-$('firmados').addEventListener('change',e=>{signedFiles=[...e.target.files].filter(f=>/\.pdf$/i.test(f.name));overrides={};renderMatches();$('qrProgress').textContent=signedFiles.length+' archivos PDF cargados.'});
-$('revisar').addEventListener('click',()=>{renderMatches();$('qrProgress').textContent='Coincidencias actualizadas. Corrige las filas pendientes en la tabla.'});
-$('archivoEnlaces').addEventListener('change',()=>setTimeout(renderMatches,400));$('archivo').addEventListener('change',()=>setTimeout(renderMatches,400));$('agregar').addEventListener('click',()=>setTimeout(renderMatches,0));$('limpiar').addEventListener('click',()=>setTimeout(()=>{overrides={};renderMatches()},0));
-async function qrStamped(p,f){const {PDFDocument}=PDFLib;const doc=await PDFDocument.load(await f.arrayBuffer(),{ignoreEncryption:false});const page=doc.getPage(0);const {width,height}=page.getSize();const url=await QRCode.toDataURL(p.link,{width:750,margin:1,errorCorrectionLevel:'M'});const qr=await doc.embedPng(Uint8Array.from(atob(url.split(',')[1]),c=>c.charCodeAt(0)));const side=Math.min(width*.128,height*.24);page.drawImage(qr,{x:width*.055,y:height*.043,width:side,height:side});return doc.save();}
-async function generatePackage(){needLibraries('XLSX','JSZip','PDFLib','QRCode');if(!participants.length)throw Error('Primero carga la lista de participantes (paso 2).');renderMatches();const ready=participants.map((p,i)=>({p,i,f:bestFile(p,i)})).filter(x=>x.f&&validLink(x.p.link));if(!ready.length)throw Error('No hay coincidencias completas. Carga los PDF, el Excel y vincula los registros en la tabla.');if(ready.length!==participants.length&&!confirm('Hay '+(participants.length-ready.length)+' participantes incompletos. ¿Descargar solamente '+ready.length+' constancias listas?'))return;const zip=new JSZip();const out=zip.folder('DIPLOMAS_FINALES_QR');const originals=zip.folder('ORIGINALES_FIRMADOS');const rows=[];const used=new Set();for(let i=0;i<ready.length;i++){const {p,f}=ready[i];let base=safeFile(p.name),filename=base+'.pdf',n=2;while(used.has(filename.toLowerCase()))filename=base+'_'+n+++'.pdf';used.add(filename.toLowerCase());$('qrProgress').textContent='Insertando QR en diploma '+(i+1)+' de '+ready.length+': '+p.name;out.file(filename,await qrStamped(p,f));originals.file(filename,f);rows.push({'Nombre completo':p.name,'Correo':p.email,'Enlace Drive':p.link,'PDF final':filename,'PDF firmado':filename,'Estado Outlook':'PENDIENTE'});if(i%3===0)await new Promise(r=>setTimeout(r,0));}const book=XLSX.utils.book_new(),sheet=XLSX.utils.json_to_sheet(rows);sheet['!cols']=[{wch:42},{wch:38},{wch:64},{wch:50},{wch:50},{wch:18}];XLSX.utils.book_append_sheet(book,sheet,'Envios');zip.file('CONTROL_ENVIO_OUTLOOK.xlsx',XLSX.write(book,{bookType:'xlsx',type:'array'}));zip.file('LEEME.txt','DIPLOMAS_FINALES_QR: PDFs con QR incorporado en la esquina inferior izquierda.\nORIGINALES_FIRMADOS: PDFs originales sin modificar.\nIMPORTANTE: el agregado de QR después de firmar puede invalidar la firma digital.\n');zip.file('outlook/PrepararBorradoresConstancias.bas',await(await fetch('outlook/PrepararBorradoresConstancias.bas')).text());downloadBlob(await zip.generateAsync({type:'blob',compression:'DEFLATE'}),'MIMP_DIPLOMAS_FINALES_QR_OUTLOOK.zip');$('qrProgress').textContent='Listo: '+ready.length+' diplomas con QR, originales y control de envío.';}
+function autoMatch(){
+ const matches=new Map(),fileUsed=new Set(),ambiguous=[];
+ participants.forEach((p,i)=>{
+  const exact=signedFiles.map((f,j)=>({f,j})).filter(({f})=>keyName(f.name)===keyName(p.name));
+  let hits=exact.length?exact:signedFiles.map((f,j)=>({f,j})).filter(({f})=>tokenName(f.name)===tokenName(p.name));
+  hits=hits.filter(({j})=>!fileUsed.has(j));
+  if(hits.length===1){matches.set(i,hits[0].f);fileUsed.add(hits[0].j)}
+  else if(hits.length>1)ambiguous.push(p.name);
+ });
+ unmatchedPDFs=signedFiles.filter((f,j)=>!fileUsed.has(j));
+ return {matches,ambiguous};
+}
+function renderMatches(){
+ const {matches,ambiguous}=autoMatch();const linked=participants.filter(p=>validLink(p.link)).length;
+ const ready=[...matches.keys()].filter(i=>validLink(participants[i].link)).length;
+ $('signedCount').textContent=`${matches.size} / ${participants.length} PDF asociados automáticamente (${signedFiles.length} cargados)`;
+ $('linkCount').textContent=`${linked} / ${participants.length} enlaces de Drive válidos`;
+ $('readyCount').textContent=`${ready} de ${participants.length} diplomas listos para QR`;
+ const box=$('matchRows');box.replaceChildren();
+ const problem=participants.map((p,i)=>({p,i})).filter(({p,i})=>!matches.has(i)||!validLink(p.link));
+ if(problem.length||unmatchedPDFs.length||ambiguous.length){
+  const d=document.createElement('div');d.className='warning';
+  const heading=document.createElement('strong');heading.textContent='Revisión de registros pendientes';d.append(heading);
+  const ul=document.createElement('ul');
+  problem.slice(0,30).forEach(({p,i})=>{const li=document.createElement('li');li.textContent=`${p.name}: ${!matches.has(i)?'sin PDF coincidente':''}${!matches.has(i)&&!validLink(p.link)?' · ':''}${!validLink(p.link)?'sin enlace https válido':''}`;ul.append(li)});
+  unmatchedPDFs.slice(0,15).forEach(f=>{const li=document.createElement('li');li.textContent='PDF sin participante: '+f.name;ul.append(li)});
+  d.append(ul);box.append(d);
+ } else if(participants.length){const p=document.createElement('p');p.className='success-note';p.textContent='✓ Todos los nombres, PDF y enlaces están relacionados automáticamente. No es necesario seleccionar archivos.';box.append(p)}
+ return ready;
+}
+$('firmados').addEventListener('change',async e=>{
+ const files=[...e.target.files];signedFiles=[];$('qrProgress').textContent='Leyendo PDF y ZIP...';
+ try{
+  for(const f of files){
+   if(/\.pdf$/i.test(f.name)){signedFiles.push(f);continue}
+   if(/\.zip$/i.test(f.name)){
+    needLibraries('JSZip');const zip=await JSZip.loadAsync(f);
+    for(const [path,item] of Object.entries(zip.files)){
+     if(item.dir||! /\.pdf$/i.test(path)||path.startsWith('__MACOSX/'))continue;
+     const blob=await item.async('blob');
+     signedFiles.push(new File([blob],path.split('/').pop(),{type:'application/pdf'}));
+    }
+   }
+  }
+  $('qrProgress').textContent=signedFiles.length+' PDF firmados cargados correctamente.';renderMatches();
+ }catch(err){$('qrProgress').textContent='Error al leer PDF o ZIP: '+err.message}
+ e.target.value='';
+});
+$('revisar').addEventListener('click',()=>{renderMatches();$('qrProgress').textContent='Asociación automática actualizada.'});
+$('archivoEnlaces').addEventListener('change',()=>setTimeout(renderMatches,500));
+$('archivo').addEventListener('change',()=>setTimeout(renderMatches,500));
+$('agregar').addEventListener('click',()=>setTimeout(renderMatches,0));
+$('limpiar').addEventListener('click',()=>setTimeout(renderMatches,0));
+async function qrStamped(p,f){
+ needLibraries('PDFLib','QRCode');const {PDFDocument}=PDFLib;
+ const doc=await PDFDocument.load(await f.arrayBuffer(),{ignoreEncryption:true});
+ const page=doc.getPage(0),{width,height}=page.getSize();
+ const url=await QRCode.toDataURL(p.link,{width:800,margin:2});
+ const bytes=Uint8Array.from(atob(url.split(',')[1]),c=>c.charCodeAt(0));const qr=await doc.embedPng(bytes);
+ // Superior/inferior fijado por proporción de página, QR en esquina inferior izquierda.
+ const side=Math.min(width*0.128,height*0.24);
+ page.drawImage(qr,{x:width*0.055,y:height*0.042,width:side,height:side});
+ return doc.save();
+}
+async function generatePackage(){
+ needLibraries('XLSX','JSZip','PDFLib','QRCode');
+ if(!participants.length)throw Error('Primero importa participantes (paso 2).');
+ const {matches}=autoMatch();renderMatches();
+ const ready=participants.map((p,i)=>({p,f:matches.get(i)})).filter(x=>x.f&&validLink(x.p.link));
+ if(!ready.length)throw Error('No hay archivos listos. Comprueba nombres de PDF, participantes y enlaces https.');
+ if(ready.length<participants.length&&!confirm(`Hay ${participants.length-ready.length} pendientes. ¿Descargar los ${ready.length} diplomas listos?`))return;
+ const zip=new JSZip(),out=zip.folder('DIPLOMAS_FINALES_QR'),originals=zip.folder('ORIGINALES_FIRMADOS');const rows=[],used=new Set();
+ for(let i=0;i<ready.length;i++){
+  const {p,f}=ready[i];let base=safeFile(p.name),filename=base+'.pdf',n=2;
+  while(used.has(filename.toLowerCase()))filename=base+'_'+n+++'.pdf';used.add(filename.toLowerCase());
+  $('qrProgress').textContent=`Insertando QR ${i+1} / ${ready.length}: ${p.name}`;
+  out.file(filename,await qrStamped(p,f));originals.file(filename,f);
+  rows.push({'Nombre completo':p.name,'Correo':p.email,'Enlace Drive':p.link,'PDF final':filename,'PDF firmado':filename,'Estado Outlook':'PENDIENTE'});
+  if(i%3===0)await new Promise(r=>setTimeout(r,0));
+ }
+ const book=XLSX.utils.book_new(),sheet=XLSX.utils.json_to_sheet(rows);sheet['!cols']=[{wch:42},{wch:38},{wch:64},{wch:50},{wch:50},{wch:18}];XLSX.utils.book_append_sheet(book,sheet,'Envios');
+ zip.file('CONTROL_ENVIO_OUTLOOK.xlsx',XLSX.write(book,{bookType:'xlsx',type:'array'}));
+ zip.file('LEEME.txt','DIPLOMAS_FINALES_QR: PDFs con QR dentro del diploma.\nORIGINALES_FIRMADOS: copias firmadas sin modificar.\nAVISO: la modificación posterior a la firma puede invalidar la firma digital.\n');
+ const macro=await fetch('outlook/PrepararBorradoresConstancias.bas');if(macro.ok)zip.file('outlook/PrepararBorradoresConstancias.bas',await macro.text());
+ downloadBlob(await zip.generateAsync({type:'blob',compression:'DEFLATE'}),'MIMP_DIPLOMAS_QR_Y_OUTLOOK.zip');
+ $('qrProgress').textContent=`Listo: ${ready.length} diplomas con QR y control de correo.`;
+}
 $('generarFinal').addEventListener('click',()=>generatePackage().catch(e=>$('qrProgress').textContent='Error: '+e.message));
-$('paquete').addEventListener('click',()=>generatePackage().catch(e=>extensionStatus('Error: '+e.message)));
+$('paquete').addEventListener('click',()=>generatePackage().catch(e=>$('extensionStatus').textContent='Error: '+e.message));
 renderMatches();

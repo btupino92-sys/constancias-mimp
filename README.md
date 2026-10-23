@@ -20,3 +20,12 @@ El archivo ZIP generado en el paso 5 contiene `MACRO_OUTLOOK/PrepararBorradoresC
 
 ## Seguridad
 GitHub Pages es público: nunca suba participantes, correos, PDFs firmados ni credenciales al repositorio. La aplicación procesa los datos localmente en el navegador. Usar solo dentro de políticas institucionales. Los archivos cargados no se guardan entre sesiones. El uso de bibliotecas CDN requiere conexión a Internet.
+
+## Actualización: asociación automática y QR sin CDN
+- Cargar PDF múltiples o un ZIP de PDF firmados.
+- Coincidencias automáticas por nombre de archivo, sin menús por persona.
+- El QR se genera con `qr-local.js` incluido; ya no necesita la biblioteca QRCode remota.
+- Excel A: nombre; B: enlace HTTPS de Drive.
+- Se reportan excepciones sin obligar a seleccionar archivos manualmente.
+- Los otros recursos externos XLSX, JSZip, PDFLib sí siguen dependiendo de Internet.
+- Insertar QR después de la firma puede invalidar la firma digital: conservar originales.
