@@ -1,9 +1,11 @@
-# Paso 5 sin Microsoft 365 — Outlook clásico de Windows
+# Paso 5 - envío directo desde Outlook clásico de Windows
 
-1. En el HTML, complete participantes (con correos), enlaces y PDF firmados. Revise las asociaciones en paso 4.
-2. En paso 5 seleccione «Outlook clásico Windows — borradores sin Excel» y pulse «Descargar paquete para Outlook clásico».
-3. Extraiga TODO el ZIP en una carpeta local (no ejecute nada dentro del ZIP). Verifique `DIPLOMAS_FINALES_QR`, `ENVIO_OUTLOOK_LOCAL.csv`, `INICIAR_BORRADORES.cmd`, `PrepararBorradoresOutlookClasico.ps1`.
-4. Abra **Outlook clásico** en Windows. En la carpeta extraída haga doble clic en `INICIAR_BORRADORES.cmd` (puede requerir autorización por las políticas de Windows/OGTI). Indique la cuenta real configurada en Outlook y escriba `CREAR` para confirmar borradores.
-5. Revise los mensajes en Borradores antes de enviar. El auxiliar **no envía automáticamente**. Se produce `REPORTE_BORRADORES.csv`.
+1. Completa participantes, correos, enlaces y PDF firmados; verifica las asociaciones.
+2. Selecciona **Outlook clásico Windows — envío directo sin Excel** y descarga el paquete.
+3. Extrae TODO el ZIP. Confirma que estén `ENVIO_OUTLOOK_LOCAL.csv`, `DIPLOMAS_FINALES_QR`, `INICIAR_ENVIO.cmd` y `EnviarConstanciasOutlookClasico.ps1`.
+4. Abre Outlook clásico en Windows y verifica la conexión. Ejecuta `INICIAR_ENVIO.cmd`.
+5. Introduce una dirección de cuenta que figure como cuenta remitente en Outlook. El sistema valida correos y PDF.
+6. Escribe exactamente **ENVIAR** para confirmar el envío real. La ejecución solicita el envío de cada mensaje con su PDF adjunto, sin guardar borradores.
+7. Revisa el archivo `REPORTE_ENVIO_*.csv`, **Elementos enviados** y **Bandeja de salida**. La orden aceptada por Outlook no garantiza la entrega final.
 
-**Limitaciones:** el auxiliar local usa COM de Outlook clásico y **no funciona** con Nuevo Outlook ni Outlook web. Si Windows restringe scripts, consulte con OGTI; no desactive ni eluda las políticas institucionales. Para enviar desde esas otras versiones sin Microsoft 365/Graph se requiere un servicio autorizado por OGTI. Nunca suba PDFs, listas, paquetes de salida ni datos de participantes a GitHub. Para buzones compartidos como cendoc@mimp.gob.pe debe estar visible como cuenta enviable y contar con autorización. El código QR agregado tras firmar puede invalidar la firma digital.
+**IMPORTANTE:** ejecutar el mismo paquete otra vez puede duplicar los correos; comprueba el reporte antes de repetir. No subas información personal o PDFs generados a GitHub. El método exige Outlook clásico de Windows, no funciona con Outlook nuevo o web y depende de permisos institucionales. No eludas políticas de OGTI. Agregar QR a un PDF firmado puede invalidar su firma digital.
