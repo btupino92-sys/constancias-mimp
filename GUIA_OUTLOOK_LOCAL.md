@@ -1,11 +1,14 @@
-# Paso 5 - envío directo desde Outlook clásico de Windows
+# Envio directo desde Outlook clasico - version basada en el flujo de borradores que funcionaba
 
-1. Completa participantes, correos, enlaces y PDF firmados; verifica las asociaciones.
-2. Selecciona **Outlook clásico Windows — envío directo sin Excel** y descarga el paquete.
-3. Extrae TODO el ZIP. Confirma que estén `ENVIO_OUTLOOK_LOCAL.csv`, `DIPLOMAS_FINALES_QR`, `INICIAR_ENVIO.cmd` y `EnviarConstanciasOutlookClasico.ps1`.
-4. Abre Outlook clásico en Windows y verifica la conexión. Ejecuta `INICIAR_ENVIO.cmd`.
-5. Introduce una dirección de cuenta que figure como cuenta remitente en Outlook. El sistema valida correos y PDF.
-6. Escribe exactamente **ENVIAR** para confirmar el envío real. La ejecución solicita el envío de cada mensaje con su PDF adjunto, sin guardar borradores.
-7. Revisa el archivo `REPORTE_ENVIO_*.csv`, **Elementos enviados** y **Bandeja de salida**. La orden aceptada por Outlook no garantiza la entrega final.
+Esta revision conserva la conexion COM, seleccion de cuenta, validacion y creacion del mensaje del script original que generaba borradores. La operacion `Save()` ahora es `Send()`.
 
-**IMPORTANTE:** ejecutar el mismo paquete otra vez puede duplicar los correos; comprueba el reporte antes de repetir. No subas información personal o PDFs generados a GitHub. El método exige Outlook clásico de Windows, no funciona con Outlook nuevo o web y depende de permisos institucionales. No eludas políticas de OGTI. Agregar QR a un PDF firmado puede invalidar su firma digital.
+1. Actualice GitHub con todos los archivos y carpetas de este ZIP, conservando las rutas.
+2. Desde el gestor genere el paquete de constancias con QR.
+3. Extraiga todo el paquete de constancias; abra Outlook clasico en Windows.
+4. Ejecute `INICIAR_ENVIO.cmd` en la carpeta extraida.
+5. Escriba una cuenta que aparezca en Outlook como cuenta remitente (si CENDOC solo es un buzon adicional, puede no aparecer).
+6. Tras validar el total, escriba exactamente `ENVIAR` para emitir los mensajes.
+7. Revise `REPORTE_ENVIO.csv`, Elementos enviados y Bandeja de salida. El reporte indica que Outlook acepto la orden, NO que haya llegado a destino.
+8. No vuelva a ejecutar el lote antes de revisar que no haya mensajes entregados o pendientes: podria producir duplicados.
+
+IMPORTANTE: pruebe con UN SOLO destinatario propio antes de usar el lote completo. Los envios reales requieren permisos de la cuenta y Outlook conectado. No incluye capacidades de envio desde buzon compartido sin los permisos de Exchange. Agregar QR despues de la firma puede invalidar la firma digital.

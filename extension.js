@@ -1346,11 +1346,15 @@ async function generatePackage(){
   rows.push({'Nombre completo':p.name,'Correo':p.email,'Enlace Drive':p.link,'PDF final':filename,'PDF firmado':filename,'Estado Outlook':'PENDIENTE'});
   if(i%3===0)await new Promise(r=>setTimeout(r,0));
  }
+ // Se toma la actividad de la constancia (paso 1); no se inventa el tema.
+ const actividadConstancia=tidy($('actividad').value);
+ if(!actividadConstancia)throw Error('Completa el nombre de la actividad en el paso 1 antes de preparar los correos.');
+ rows.forEach(r=>r['Actividad constancia']=actividadConstancia);
  const book=XLSX.utils.book_new(),sheet=XLSX.utils.json_to_sheet(rows);sheet['!cols']=[{wch:42},{wch:38},{wch:64},{wch:50},{wch:50},{wch:18}];XLSX.utils.book_append_sheet(book,sheet,'Envios');
  zip.file('CONTROL_ENVIO_OUTLOOK.xlsx',XLSX.write(book,{bookType:'xlsx',type:'array'}));
  // Control plano para enviar desde Outlook clasico Windows tras confirmacion explicita.
  const csvCell=x=>'"'+String(x??'').replaceAll('"','""').replace(/[\r\n]+/g,' ')+'"';
- const csvContent='\ufeff'+[['Nombre','Correo','PDF','Enlace'],...rows.map(r=>[r['Nombre completo'],r['Correo'],r['PDF final'],r['Enlace Drive']])].map(line=>line.map(csvCell).join(';')).join('\r\n');
+ const csvContent='\ufeff'+[['Nombre','Correo','PDF','Enlace','Actividad'],...rows.map(r=>[r['Nombre completo'],r['Correo'],r['PDF final'],r['Enlace Drive'],r['Actividad constancia']])].map(line=>line.map(csvCell).join(';')).join('\r\n');
  zip.file('ENVIO_OUTLOOK_LOCAL.csv',csvContent);
  for (const name of ['INICIAR_ENVIO.cmd','EnviarConstanciasOutlookClasico.ps1']) {
    const response=await fetch('outlook/'+name);

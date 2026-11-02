@@ -45,7 +45,15 @@ async function token(){if(!client||!account)throw Error('Conecta primero tu cuen
  try{return (await client.acquireTokenSilent({scopes,account})).accessToken;}
  catch(e){return (await client.acquireTokenPopup({scopes,account})).accessToken;}}
 function toB64(data){let out='',u=data instanceof Uint8Array?data:new Uint8Array(data);for(let i=0;i<u.length;i+=8192)out+=String.fromCharCode(...u.subarray(i,i+8192));return btoa(out);}
-function emailBody(p){const v=clean(el('msBody').value);return `${v}\n\nParticipante: ${p.name}\nEnlace de verificación: ${p.link}`;}
+function emailBody(p){
+ const actividad=clean(el('actividad').value)
+   .replace(/^por\s+su\s+participaci[oó]n\s+en\s+(?:el|la|los|las)\s+/i,'')
+   .replace(/^por\s+haber\s+participado\s+en\s+(?:el|la|los|las)\s+/i,'')
+   .replace(/,?\s*(?:desarrollad[oa]s?|realizad[oa]s?|llevad[oa]s?\s+a\s+cabo)\s+(?:el\s+)?(?:d[ií]a\s+)?\d{1,2}\s+de\s+.+$/i,'')
+   .replace(/[.,\s]+$/,'');
+ if(!actividad)throw Error('Completa el nombre de la actividad en el paso 1.');
+ return `Estimado(a) ${p.name}:\n\nReciba un cordial saludo.\n\nSe remite adjunta su constancia de participación correspondiente a la actividad ${actividad}, realizada en el marco de la Agenda Cultural del Centro de Documentación (CENDOC) del Ministerio de la Mujer y Poblaciones Vulnerables.\n\nEnlace de consulta de la constancia: ${p.link}\n\nAtentamente,\nCentro de Documentación (CENDOC)\nOficina de Atención a la Ciudadanía y Gestión Documental\nMinisterio de la Mujer y Poblaciones Vulnerables`;
+}
 async function sendOne(row){
  const pdf=await qrStamped(row.p,row.f);
  if(pdf.byteLength>2.8*1024*1024)throw Error('El PDF supera el límite de adjunto simple (aprox. 3 MB). Requiere envío mediante sesión de carga o reducir tamaño.');
