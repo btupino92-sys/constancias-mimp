@@ -45,7 +45,7 @@ try {
    if ([string]::IsNullOrWhiteSpace($fallbackActividad)) { throw 'Actividad requerida. No se enviaron correos.' }
   }
   $answer=Read-Host ('Escriba ENVIAR para enviar '+$valid.Count+' correos reales desde '+$requested)
-  if ($answer -cne 'ENVIAR') { Write-Host 'Cancelado.'; exit }
+  if ($answer.Trim() -ine 'ENVIAR') { Write-Host 'Cancelado. No se enviaron correos.'; exit }
   function Get-ActividadParaCorreo([string]$texto) {
    $texto=($texto -replace '\s+', ' ').Trim()
    if ([string]::IsNullOrWhiteSpace($texto)) { return '' }
